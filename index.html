@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment Lease vs. Buy Decision Tool</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f7f6; }
+        .container { max-width: 550px; margin: auto; padding: 25px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .section-title { font-weight: bold; color: #007bff; margin-top: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
+        label { display: block; margin-top: 10px; font-weight: 500; color: #34495e; font-size: 14px; }
+        input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; margin-top: 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 25px; padding: 15px; background: #e9ecef; border-radius: 5px; border-left: 5px solid #007bff; }
+        .result p { margin: 8px 0; font-size: 15px; }
+        .recommendation { font-weight: bold; font-size: 17px; color: #28a745; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚙️ Lease vs. Buy Decision Tool</h2>
+    
+    <div class="section-title">Asset & Buy Option Details</div>
+    <label for="purchasePrice">Equipment Purchase Price (₹):</label>
+    <input type="number" id="purchasePrice" value="500000">
+
+    <label for="usefulLife">Useful Life / Duration (Years):</label>
+    <input type="number" id="usefulLife" value="5">
+
+    <label for="salvageValue">Estimated Salvage/Resale Value (₹):</label>
+    <input type="number" id="salvageValue" value="50000">
+
+    <div class="section-title">Lease Option Details</div>
+    <label for="annualLease">Annual Lease Payment (₹):</label>
+    <input type="number" id="annualLease" value="120000">
+
+    <div class="section-title">Financial & Tax Rates</div>
+    <label for="discountRate">Discount Rate / Cost of Capital (%):</label>
+    <input type="number" id="discountRate" step="0.1" value="10">
+
+    <label for="taxRate">Corporate Tax Rate (%):</label>
+    <input type="number" id="taxRate" step="0.1" value="25">
+
+    <button onclick="calculateDecision()">Evaluate Decision</button>
+
+    <div class="result" id="output" style="display:none;">
+        <p><strong>Net Present Value (NPV) Outflow - Buying:</strong> ₹<span id="buyNPV"></span></p>
+        <p><strong>Net Present Value (NPV) Outflow - Leasing:</strong> ₹<span id="leaseNPV"></span></p>
+        <div class="recommendation" id="recommendationText"></div>
+    </div>
+</div>
+
+<script>
+function calculateDecision() {
+    let P = parseFloat(document.getElementById('purchasePrice').value);
+    let N = parseFloat(document.getElementById('usefulLife').value);
+    let S = parseFloat(document.getElementById('salvageValue').value);
+    let L = parseFloat(document.getElementById('annualLease').value);
+    let k = parseFloat(document.getElementById('discountRate').value) / 100;
+    let T = parseFloat(document.getElementById('taxRate').value) / 100;
+
+    if (P <= 0 || N <= 0 || k <= 0) {
+        alert("Please enter valid positive numbers.");
+        return;
+    }
+
+    // --- 1. BUY OPTION NPV (Cash Outflow) ---
+    // Initial Outflow = Purchase Price
+    let buyNPV = P; 
+    let annualDepreciation = (P - S) / N; // Straight-line depreciation
+
+    for (let t = 1; t <= N; t++) {
+        // Tax shield savings from depreciation
+        let taxShield = annualDepreciation * T; 
+        let netOutflow = -taxShield; 
+
+        if (t === N) {
+            // Subtract salvage value (after tax impact if applicable, keeping simple salvage inflow)
+            netOutflow -= S; 
+        }
+
+        buyNPV += netOutflow / Math.pow(1 + k, t);
+    }
+
+    // --- 2. LEASE OPTION NPV (Cash Outflow) ---
+    let leaseNPV = 0;
+    for (let t = 1; t <= N; t++) {
+        // Lease payments are tax-deductible operating expenses
+        let afterTaxLeasePayment = L * (1 - T);
+        leaseNPV += afterTaxLeasePayment / Math.pow(1 + k, t);
+    }
+
+    // --- DISPLAY RESULTS ---
+    document.getElementById('buyNPV').innerText = Math.round(buyNPV).toLocaleString('en-IN');
+    document.getElementById('leaseNPV').innerText = Math.round(leaseNPV).toLocaleString('en-IN');
+
+    let recommendation = "";
+    if (leaseNPV < buyNPV) {
+        let savings = Math.round(buyNPV - leaseNPV).toLocaleString('en-IN');
+        recommendation = `💡 Recommendation: LEASE the equipment. It saves approx ₹${savings} in present value terms!`;
+    } else {
+        let savings = Math.round(leaseNPV - buyNPV).toLocaleString('en-IN');
+        recommendation = `💡 Recommendation: BUY the equipment. It saves approx ₹${savings} in present value terms!`;
+    }
+
+    document.getElementById('recommendationText').innerText = recommendation;
+    document.getElementById('output').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
