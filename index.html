@@ -3,57 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Equipment Lease vs. Buy Decision Tool</title>
+    <title>Equipment Lease vs. Buy Decision Tool (AS 19 vs. Ind AS 116)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f7f6; }
-        .container { max-width: 550px; margin: auto; padding: 25px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .container { max-width: 600px; margin: auto; padding: 25px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        
+        /* Toggle Switch Styling */
+        .toggle-container { display: flex; justify-content: center; background: #e9ecef; border-radius: 8px; padding: 5px; margin-bottom: 20px; }
+        .toggle-btn { flex: 1; padding: 10px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #495057; border-radius: 6px; transition: 0.3s; }
+        .toggle-btn.active { background: #007bff; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .standard-badge { background: #e7f1ff; color: #004085; padding: 8px 12px; border-radius: 5px; font-size: 13px; font-weight: bold; margin-bottom: 15px; text-align: center; border: 1px solid #b8daff; }
         .section-title { font-weight: bold; color: #007bff; margin-top: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-weight: 500; color: #34495e; font-size: 14px; }
         input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; margin-top: 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
         button:hover { background: #0056b3; }
+        
         .result { margin-top: 25px; padding: 15px; background: #e9ecef; border-radius: 5px; border-left: 5px solid #007bff; }
-        .result p { margin: 8px 0; font-size: 15px; }
-        .recommendation { font-weight: bold; font-size: 17px; color: #28a745; margin-top: 10px; }
+        .result p { margin: 8px 0; font-size: 14px; color: #212529; }
+        .recommendation { font-weight: bold; font-size: 16px; color: #28a745; margin-top: 12px; }
+        .accounting-note { font-size: 12px; color: #6c757d; margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>⚙️ Lease vs. Buy Decision Tool</h2>
-    
-    <div class="section-title">Asset & Buy Option Details</div>
+
+    <!-- Accounting Standard Toggle -->
+    <div class="toggle-container">
+        <button class="toggle-btn active" id="smeBtn" onclick="setMode('SME')">SME Mode (AS 19 / AS 10)</button>
+        <button class="toggle-btn" id="corpBtn" onclick="setMode('CORP')">Corporate Mode (Ind AS 116 / 16)</button>
+    </div>
+
+    <div class="standard-badge" id="modeDescription">
+        📋 Rulebook: AS 19 (Leases) & AS 10 (Property, Plant & Equipment) — Off-Balance-Sheet Operating Lease
+    </div>
+
+    <div class="section-title">Asset & Purchase Details</div>
     <label for="purchasePrice">Equipment Purchase Price (₹):</label>
     <input type="number" id="purchasePrice" value="500000">
 
-    <label for="usefulLife">Useful Life / Duration (Years):</label>
+    <label for="usefulLife">Useful Life / Tenure (Years):</label>
     <input type="number" id="usefulLife" value="5">
 
     <label for="salvageValue">Estimated Salvage/Resale Value (₹):</label>
     <input type="number" id="salvageValue" value="50000">
 
-    <div class="section-title">Lease Option Details</div>
+    <div class="section-title">Lease Agreement Details</div>
     <label for="annualLease">Annual Lease Payment (₹):</label>
     <input type="number" id="annualLease" value="120000">
 
     <div class="section-title">Financial & Tax Rates</div>
-    <label for="discountRate">Discount Rate / Cost of Capital (%):</label>
+    <label for="discountRate">Incremental Borrowing / Discount Rate (%):</label>
     <input type="number" id="discountRate" step="0.1" value="10">
 
     <label for="taxRate">Corporate Tax Rate (%):</label>
     <input type="number" id="taxRate" step="0.1" value="25">
 
-    <button onclick="calculateDecision()">Evaluate Decision</button>
+    <button onclick="calculateDecision()">Evaluate Lease vs. Buy</button>
 
     <div class="result" id="output" style="display:none;">
         <p><strong>Net Present Value (NPV) Outflow - Buying:</strong> ₹<span id="buyNPV"></span></p>
         <p><strong>Net Present Value (NPV) Outflow - Leasing:</strong> ₹<span id="leaseNPV"></span></p>
+        
+        <!-- Corporate Balance Sheet Recognition (Ind AS 116) -->
+        <div id="indAsDetails" style="display:none; border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
+            <p><strong>Present Value of Lease Liability (Day 1 Balance Sheet):</strong> ₹<span id="leaseLiability"></span></p>
+            <p><strong>Initial Right-of-Use (ROU) Asset:</strong> ₹<span id="rouAsset"></span></p>
+            <p class="accounting-note">⚠️ Ind AS 116 requires recording the lease obligation on your balance sheet, impacting financial leverage ratios.</p>
+        </div>
+
         <div class="recommendation" id="recommendationText"></div>
     </div>
 </div>
 
 <script>
+let currentMode = 'SME';
+
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('smeBtn').classList.toggle('active', mode === 'SME');
+    document.getElementById('corpBtn').classList.toggle('active', mode === 'CORP');
+    
+    let badge = document.getElementById('modeDescription');
+    if (mode === 'SME') {
+        badge.innerText = "📋 Rulebook: AS 19 (Leases) & AS 10 — Off-Balance-Sheet Operating Lease for SMEs/Individuals";
+    } else {
+        badge.innerText = "🏢 Rulebook: Ind AS 116 (Leases) & Ind AS 16 — On-Balance-Sheet Right-of-Use (ROU) Asset for Listed Corporates";
+    }
+    // Recalculate if result box is visible
+    if(document.getElementById('output').style.display !== 'none') {
+        calculateDecision();
+    }
+}
+
 function calculateDecision() {
     let P = parseFloat(document.getElementById('purchasePrice').value);
     let N = parseFloat(document.getElementById('usefulLife').value);
@@ -67,30 +113,50 @@ function calculateDecision() {
         return;
     }
 
-    // --- 1. BUY OPTION NPV (Cash Outflow) ---
-    // Initial Outflow = Purchase Price
+    // --- 1. BUY OPTION NPV (AS 10 / Ind AS 16) ---
     let buyNPV = P; 
-    let annualDepreciation = (P - S) / N; // Straight-line depreciation
+    let annualDepreciation = (P - S) / N;
 
     for (let t = 1; t <= N; t++) {
-        // Tax shield savings from depreciation
         let taxShield = annualDepreciation * T; 
         let netOutflow = -taxShield; 
-
-        if (t === N) {
-            // Subtract salvage value (after tax impact if applicable, keeping simple salvage inflow)
-            netOutflow -= S; 
-        }
-
+        if (t === N) netOutflow -= S; 
         buyNPV += netOutflow / Math.pow(1 + k, t);
     }
 
-    // --- 2. LEASE OPTION NPV (Cash Outflow) ---
+    // --- 2. LEASE OPTION NPV ---
     let leaseNPV = 0;
-    for (let t = 1; t <= N; t++) {
-        // Lease payments are tax-deductible operating expenses
-        let afterTaxLeasePayment = L * (1 - T);
-        leaseNPV += afterTaxLeasePayment / Math.pow(1 + k, t);
+    let presentValueLeaseLiability = 0;
+
+    if (currentMode === 'SME') {
+        // AS 19: Operating lease — Full rent is tax deductible expense
+        for (let t = 1; t <= N; t++) {
+            let afterTaxLeasePayment = L * (1 - T);
+            leaseNPV += afterTaxLeasePayment / Math.pow(1 + k, t);
+        }
+        document.getElementById('indAsDetails').style.display = 'none';
+    } else {
+        // Ind AS 116: On-Balance Sheet Lease Liability & ROU Asset Amortization
+        for (let t = 1; t <= N; t++) {
+            presentValueLeaseLiability += L / Math.pow(1 + k, t);
+        }
+
+        let annualROUDepreciation = presentValueLeaseLiability / N;
+        let remainingLiability = presentValueLeaseLiability;
+
+        for (let t = 1; t <= N; t++) {
+            let interestExpense = remainingLiability * k;
+            let totalExpense = annualROUDepreciation + interestExpense;
+            let taxShield = totalExpense * T;
+            let netCashOutflow = L - taxShield;
+
+            leaseNPV += netCashOutflow / Math.pow(1 + k, t);
+            remainingLiability = (remainingLiability + interestExpense) - L;
+        }
+
+        document.getElementById('leaseLiability').innerText = Math.round(presentValueLeaseLiability).toLocaleString('en-IN');
+        document.getElementById('rouAsset').innerText = Math.round(presentValueLeaseLiability).toLocaleString('en-IN');
+        document.getElementById('indAsDetails').style.display = 'block';
     }
 
     // --- DISPLAY RESULTS ---
@@ -100,10 +166,10 @@ function calculateDecision() {
     let recommendation = "";
     if (leaseNPV < buyNPV) {
         let savings = Math.round(buyNPV - leaseNPV).toLocaleString('en-IN');
-        recommendation = `💡 Recommendation: LEASE the equipment. It saves approx ₹${savings} in present value terms!`;
+        recommendation = `💡 Recommendation: LEASE the equipment. It saves approx ₹${savings} in present value cash outflows!`;
     } else {
         let savings = Math.round(leaseNPV - buyNPV).toLocaleString('en-IN');
-        recommendation = `💡 Recommendation: BUY the equipment. It saves approx ₹${savings} in present value terms!`;
+        recommendation = `💡 Recommendation: BUY the equipment. It saves approx ₹${savings} in present value cash outflows!`;
     }
 
     document.getElementById('recommendationText').innerText = recommendation;
